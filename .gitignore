@@ -1,0 +1,5 @@
+# Ignore the data tracking file
+repose_data.csv
+
+# Ignore the VTK folder and everything inside it
+vtk_output/
