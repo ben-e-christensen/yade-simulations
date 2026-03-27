@@ -22,12 +22,12 @@ def export_positions():
 # --- 1. Materials ---
 # Set coefficient of friction to exactly 0.4 using math.atan()
 fric_angle = math.atan(0.4)
-sphere_mat = O.materials.append(FrictMat(young=1e7, poisson=0.3, density=2600, frictionAngle=fric_angle))
+sphere_mat = O.materials.append(FrictMat(young=1e7, poisson=0.3, density=1190, frictionAngle=fric_angle))
 wall_mat = O.materials.append(FrictMat(young=1e7, poisson=0.3, frictionAngle=fric_angle))
 
 # --- 2. Geometry (The Drum) ---
-R_base = 81.5e-3  # Your OpenSCAD inner radius
-length = 3.2e-3   # Matches your OpenSCAD height
+R_base = 81.5e-3  # OpenSCAD inner radius
+length = 3.2e-3   # Matches OpenSCAD height
 
 # Load the STL and capture the specific IDs of the teeth
 drum_facets = ymport.stl('serrated_drum.stl', material=wall_mat, scale=0.001)
