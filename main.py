@@ -44,11 +44,12 @@ rotating_ids = drum_ids + faceplate_ids
 R_bead = 1.6e-3
 sp = pack.SpherePack()
 
-# We center the cloud generation slightly toward the gap side 
-# to ensure no beads are "pre-clipping" through the flush wall.
-sp.makeCloud(minCorner=(-R_base/2, -R_base/2, -drum_h/2 + 0.0001), 
-             maxCorner=(R_base/2, R_base/2, drum_h/2 + gap - 0.0001), 
+# 1. Expand corners to R_base (not R_base/2) to use the whole drum area
+# 2. Give the Z-axis a tiny bit of extra 'slack' (0.5mm) so the packer doesn't choke
+sp.makeCloud(minCorner=(-R_base, -R_base, -drum_h/2 - 0.0005), 
+             maxCorner=(R_base, R_base, drum_h/2 + gap + 0.0005), 
              rMean=R_bead, rRelFuzz=0.0, num=500)
+
 sp.toSimulation(material=sphere_mat)
 
 # --- 4. Engines ---
