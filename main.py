@@ -44,18 +44,24 @@ rotating_ids = drum_ids + faceplate_ids
 R_bead = 1.6e-3
 sp = pack.SpherePack()
 
-# Define the 'Cookie Cutter' (Cylinder)
-# We shrink the radius by R_bead so centers aren't touching the wall
-pred = pack.inCylinder((0, 0, -drum_h/2), (0, 0, drum_h/2 + gap), R_base - R_bead)
-
-# Now we tell makeCloud to use that predicate
-# We can use a large box for the corners because the predicate will trim it
+# 1. Generate a 'surplus' of beads in a box (e.g., 800)
+# This gives the random generator more options so it doesn't get stuck at 387
 sp.makeCloud(minCorner=(-R_base, -R_base, -drum_h/2), 
              maxCorner=(R_base, R_base, drum_h/2 + gap), 
-             rMean=R_bead, rRelFuzz=0.0, num=500,
-             predicate=pred)
+             rMean=R_bead, rRelFuzz=0.0, num=800)
 
-sp.toSimulation(material=sphere_mat)
+# 2. Manually filter them into the simulation
+count = 0
+for center, radius in sp:
+    x, y, z = center
+    # Distance formula: Is the bead's center within the drum's radius?
+    # We subtract 2mm (0.002) as a safety buffer so they don't touch the teeth on frame 1
+    if math.sqrt(x**2 + y**2) < (R_base - 0.002):
+        if count < 500:
+            O.bodies.append(sphere(center, radius, material=sphere_mat))
+            count += 1
+
+print(f"Successfully added {count} beads inside the drum geometry.")
 
 # --- 4. Engines ---
 O.engines = [
