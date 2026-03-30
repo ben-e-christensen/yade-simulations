@@ -30,7 +30,7 @@ drum_facets = ymport.stl('serrated_drum.stl', material=wall_mat, scale=0.001)
 drum_ids = O.bodies.append(drum_facets)
 
 # ASYMMETRIC FACEPLATES:
-# shift the center by half the gap (0.1mm) to make one side flush and one side gapped.
+# We shift the center by half the gap (0.1mm) to make one side flush and one side gapped.
 faceplates = geom.facetBox(
     center=(0, 0, gap/2), 
     extents=(R_base * 1.5, R_base * 1.5, (drum_h + gap) / 2), 
