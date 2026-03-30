@@ -44,11 +44,16 @@ rotating_ids = drum_ids + faceplate_ids
 R_bead = 1.6e-3
 sp = pack.SpherePack()
 
-# 1. Expand corners to R_base (not R_base/2) to use the whole drum area
-# 2. Give the Z-axis a tiny bit of extra 'slack' (0.5mm) so the packer doesn't choke
-sp.makeCloud(minCorner=(-R_base, -R_base, -drum_h/2 - 0.0005), 
-             maxCorner=(R_base, R_base, drum_h/2 + gap + 0.0005), 
-             rMean=R_bead, rRelFuzz=0.0, num=500)
+# Define the 'Cookie Cutter' (Cylinder)
+# We shrink the radius by R_bead so centers aren't touching the wall
+pred = pack.inCylinder((0, 0, -drum_h/2), (0, 0, drum_h/2 + gap), R_base - R_bead)
+
+# Now we tell makeCloud to use that predicate
+# We can use a large box for the corners because the predicate will trim it
+sp.makeCloud(minCorner=(-R_base, -R_base, -drum_h/2), 
+             maxCorner=(R_base, R_base, drum_h/2 + gap), 
+             rMean=R_bead, rRelFuzz=0.0, num=500,
+             predicate=pred)
 
 sp.toSimulation(material=sphere_mat)
 
