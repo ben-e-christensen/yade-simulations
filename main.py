@@ -6,9 +6,9 @@ import os
 if not os.path.exists('vtk_output'):
     os.makedirs('vtk_output')
 
-# UPDATED: Added headers for rotation (quaternions) and angular velocity
+# UPDATED: Added 'z_pos' to the header
 with open('repose_data.csv', 'w') as f:
-    f.write("sim_time,bead_id,x_pos,y_pos,rot_w,rot_x,rot_y,rot_z,ang_vel_x,ang_vel_y,ang_vel_z\n")
+    f.write("sim_time,bead_id,x_pos,y_pos,z_pos,rot_w,rot_x,rot_y,rot_z,ang_vel_x,ang_vel_y,ang_vel_z\n")
 
 def export_positions():
     with open('repose_data.csv', 'a') as f:
@@ -19,8 +19,7 @@ def export_positions():
                 ori = b.state.ori
                 vel = b.state.angVel
                 
-                # Write all 11 data points to the CSV
-                f.write(f"{O.time},{b.id},{pos[0]},{pos[1]},"
+                f.write(f"{O.time},{b.id},{pos[0]},{pos[1]},{pos[2]},"
                         f"{ori[0]},{ori[1]},{ori[2]},{ori[3]},"
                         f"{vel[0]},{vel[1]},{vel[2]}\n")
 
