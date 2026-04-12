@@ -4,7 +4,7 @@ import time
 # 1. Cranked up to 20,000 particles. 
 # We shrunk rMean to .02 so they physically fit inside the 1x1x1 bounding box.
 sp = pack.SpherePack()
-sp.makeCloud((0,0,0), (1,1,1), rMean=.02, num=20000)
+sp.makeCloud((0,0,0), (1,1,1), rMean=.02, num=5000)
 sp.toSimulation()
 
 O.engines=[
