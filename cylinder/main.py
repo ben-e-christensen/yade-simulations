@@ -3,10 +3,8 @@ import math
 import os
 
 # --- 0. Output Setup (VTK & CSV) ---
-# Create a folder for the Paraview VTK files so they don't clutter your main directory
-os.makedirs('vtk_data', exist_ok=True)
+os.makedirs('vtk_output', exist_ok=True)
 
-# Initialize our CSV file and write the headers
 csv_filename = "bead_tracking.csv"
 with open(csv_filename, 'w') as f:
     f.write("time,angle_deg,bead_y,bead_z,dist_top,dist_bot,force_mag,force_constant\n")
@@ -36,16 +34,23 @@ for f in horizon_line:
     f.shape.wire = False
 O.bodies.append(horizon_line)
 
-# --- 5. Electrostatics & Stickiness Detector ---
-force_constant = 1e-10 
+# --- 5. Electrostatics & Automated Force Looper ---
 target_rpm = 1.0
 omega = target_rpm * (2 * math.pi / 60.0) 
 
+# Our NEW list of forces bracketing the gravitational tipping point
+forces_to_test = [1e-15, 5e-16, 3e-16, 2e-16, 1e-16, 5e-17, 1e-17]
+current_trial_idx = 0
+force_constant = forces_to_test[current_trial_idx]
+
 bead_fell = False
 full_rotation_time = (60.0 / target_rpm)
+last_reported_rotation = 0  
+
+print(f"--- Starting Trial 1 with Force: {force_constant:.2e} ---")
 
 def apply_electrostatics():
-    global bead_fell
+    global bead_fell, last_reported_rotation, current_trial_idx, force_constant
     
     current_angle = O.time * omega
     bead_pos = O.bodies[bead_id].state.pos
@@ -64,18 +69,32 @@ def apply_electrostatics():
     dist_top = max(dist_top, min_dist)
     dist_bot = max(dist_bot, min_dist)
     
-    # Detect if the bead falls (starts checking after 1/4 rotation)
-    if O.time > (full_rotation_time * 0.25):
+    # Detect if the bead falls
+    if O.time > (full_rotation_time * last_reported_rotation + (full_rotation_time * 0.25)):
         if dist_top > 0.005 and dist_bot > 0.005:
             bead_fell = True
             
-    # Pause and report at exactly 1 full rotation
-    if O.time >= full_rotation_time:
+    # --- AUTOMATED LOOP LOGIC ---
+    current_rotation = int(O.time / full_rotation_time)
+    
+    if current_rotation > last_reported_rotation:
         if bead_fell:
-            print(f"Force {force_constant}: The bead FELL.")
+            print(f"RESULT: Force {force_constant:.2e} -> The bead FELL.")
         else:
-            print(f"Force {force_constant}: The bead STUCK!")
-        O.pause() 
+            print(f"RESULT: Force {force_constant:.2e} -> The bead STUCK!")
+            
+        current_trial_idx += 1
+        
+        if current_trial_idx >= len(forces_to_test):
+            print("--- All force trials complete! ---")
+            O.pause()
+        else:
+            force_constant = forces_to_test[current_trial_idx]
+            print(f"--- Starting Trial {current_trial_idx + 1} with Force: {force_constant:.2e} ---")
+            
+        bead_fell = False
+        last_reported_rotation = current_rotation
+    # -----------------------------
     
     # Apply inverse square force
     f_top_mag = force_constant / (dist_top**2)
@@ -86,7 +105,7 @@ def apply_electrostatics():
     
     O.forces.addF(bead_id, (0, f_y, f_z))
     
-    # Log data to CSV every 100th of a second
+    # Log data to CSV
     if O.iter % 100 == 0:
         with open(csv_filename, 'a') as f:
             f.write(f"{O.time:.4f},{math.degrees(current_angle):.2f},{bead_pos[1]:.6f},{bead_pos[2]:.6f},{dist_top:.6f},{dist_bot:.6f},{max(f_top_mag, f_bot_mag):.6e},{force_constant:.2e}\n")
@@ -103,11 +122,7 @@ O.engines = [
     NewtonIntegrator(gravity=(0, -9.81, 0), damping=0.2),
     
     RotationEngine(ids=cylinder_ids, rotationAxis=(1, 0, 0), rotateAroundZero=True, angularVelocity=omega),
-    
-    # Python logic & tracking
     PyRunner(command='apply_electrostatics()', iterPeriod=1),
-    
-    # VTK Exporter for Paraview (Saves a frame every 500 iterations)
     VTKRecorder(fileName='vtk_data/sim_', recorders=['spheres', 'facets', 'colors'], iterPeriod=500)
 ]
 
@@ -117,9 +132,6 @@ O.dt = .5 * PWaveTimeStep()
 # --- 8. UI and View Automation ---
 v = qt.View()
 v.axes = False  
-
-# Snap the camera to look down the X-axis
 v.viewDir = (1, 0, 0)
 v.upVector = (0, 1, 0) 
-
 qt.center()
