@@ -26,7 +26,7 @@ def export_positions():
 
 # --- 1. Materials (THE FRICTION HACK) ---
 # We are overriding the 0.4 coefficient and forcing a massive 70-degree friction angle
-fric_angle = math.radians(70) 
+fric_angle = math.radians(45) 
 
 sphere_mat = O.materials.append(FrictMat(young=1e7, poisson=0.3, density=1190, frictionAngle=fric_angle))
 wall_mat = O.materials.append(FrictMat(young=1e7, poisson=0.3, frictionAngle=fric_angle))
@@ -34,7 +34,7 @@ wall_mat = O.materials.append(FrictMat(young=1e7, poisson=0.3, frictionAngle=fri
 # --- 2. Geometry ---
 R_base = 81.5e-3  
 drum_h = 3.2e-3   
-gap = 0.2e-3      to make them stick together like a weak powder.
+gap = 0.2e-3      
 cohesion_strength = 1e4 
 
 drum_facets = ymport.stl('serrated_drum.stl', material=wall_mat, scale=0.001)
