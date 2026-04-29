@@ -60,7 +60,7 @@ rotating_ids = drum_ids + faceplate_ids
 
 # --- 3. Particles (Hexagonal Grid Packing) ---
 R_bead = 1.6e-3
-target_beads = 500
+target_beads = 50
 count = 0
 
 spacing = (R_bead * 2.0) * 1.01 
@@ -159,7 +159,7 @@ O.engines = [
     PyRunner(command='friction_stepper()', iterPeriod=100),
                    
     PyRunner(command='export_positions()', virtPeriod=0.01),
-    VTKRecorder(fileName='vtk_output/drum_', recorders=['spheres', 'facets', 'colors', 'velocity'], virtPeriod=0.01)
+    VTKRecorder(fileName='vtk_output/drum_', recorders=['spheres', 'facets', 'colors', 'velocity', 'angVel', 'intr', 'id'], virtPeriod=0.01)
 ]
 
 # --- 6. Execution Setup ---
