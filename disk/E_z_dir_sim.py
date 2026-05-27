@@ -2,6 +2,7 @@ from yade import pack, geom, qt, ymport, export
 import math
 import os
 import numpy as np
+import random
 
 # --- 0. Global Variables & Setup ---
 RPM = 26.0  
@@ -11,9 +12,8 @@ angular_vel = RPM * (math.pi / 30.0)
 baseline_friction_deg = 21.801 # arctan(0.4)
 baseline_rad = math.radians(baseline_friction_deg)
 
-# The extended E-Force sweep parameters (1, 6 pattern up to 1.0e-4)
+# The extended E-Force sweep parameters (Removed 0.0, starting at 1e-8)
 e_force_multipliers = [
-    0.0, 
     1.0e-8, 6.0e-8, 
     1.0e-7, 6.0e-7, 
     1.0e-6, 6.0e-6, 
@@ -89,11 +89,12 @@ for row in range(-grid_size, grid_size):
             
         if math.sqrt(x_rot**2 + y_rot**2) < (R_base - 0.003):
             s = sphere((x_rot, y_rot, gap/2), R_bead, material=sphere_mat)
-            s.shape.color = (0.0, 0.2, 1.0) # Start Blue
+            # Multicolored ball pit look!
+            s.shape.color = (random.random(), random.random(), random.random())
             O.bodies.append(s)
             count += 1
 
-print(f"\n--- SUCCESS: Placed {count} beads, pre-tilted to {baseline_friction_deg:.1f} degrees. ---\n")
+print(f"\n--- SUCCESS: Placed {count} multicolored beads, pre-tilted to {baseline_friction_deg:.1f} degrees. ---\n")
 
 # --- 5. Custom Python Engines ---
 
@@ -116,22 +117,11 @@ def e_force_stepper():
             return
             
         current_e_mag = e_force_multipliers[current_e_idx]
-        
-        # Color the beads based on E-force intensity (Blue = 0.0, Red = Max)
-        color_factor = current_e_idx / (len(e_force_multipliers) - 1.0)
-        new_color = (color_factor, 0.2, 1.0 - color_factor)
-        for b in O.bodies:
-            if isinstance(b.shape, Sphere):
-                b.shape.color = new_color
-                
         print(f"\n[Sim Time: {O.time:.1f}s] Stepping up E-Force -> Now at {current_e_mag}")
         phase_start_time = O.time
 
 def apply_wall_electrostatics():
     """Calculates and injects 3D boundary attraction forces."""
-    if current_e_mag == 0.0:
-        return 
-        
     wall_cutoff = R_bead * 4.0 
     Z_center = gap / 2.0
     Z_max = Z_center + (drum_h / 2.0)
