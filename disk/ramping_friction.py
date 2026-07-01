@@ -3,11 +3,11 @@ import math
 import os
 
 # --- 0. Global Variables & Setup ---
-RPM = 26.0  
+RPM = 11.0  
 angular_vel = RPM * (math.pi / 30.0)
 
 # The friction sweep parameters
-friction_angles_deg = [20.0 + (i * 2.5) for i in range(13)] # [20.0, 22.5, ..., 50.0]
+friction_angles_deg = [50.0 + (i * 2.5) for i in range(17)] # [20.0, 22.5, ..., 50.0]
 current_idx = 0
 current_deg = friction_angles_deg[current_idx]
 phase_duration_virtual = 30.0 # 30 virtual (simulation) seconds per friction step
@@ -89,7 +89,7 @@ row_height = spacing * math.sqrt(3) / 2.0
 grid_size = int((R_base * 2) / spacing) + 2
 
 # Pre-tilt the bed to match the starting 20-degree friction angle
-tilt_angle_deg = 20.0 
+tilt_angle_deg = 50.0 
 tilt_rad = math.radians(tilt_angle_deg)
 
 for row in range(-grid_size, grid_size):

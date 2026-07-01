@@ -5,7 +5,7 @@ import numpy as np
 import random
 
 # --- 0. Global Variables & Setup ---
-RPM = 26.0  
+RPM = 11.0  
 angular_vel = RPM * (math.pi / 30.0)
 
 # Manufacturer specifications
