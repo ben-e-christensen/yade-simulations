@@ -89,7 +89,7 @@ row_height = spacing * math.sqrt(3) / 2.0
 grid_size = int((R_base * 2) / spacing) + 2
 
 # Pre-tilt the bed to match the starting 20-degree friction angle
-tilt_angle_deg = 50.0 
+tilt_angle_deg = current_deg
 tilt_rad = math.radians(tilt_angle_deg)
 
 for row in range(-grid_size, grid_size):
