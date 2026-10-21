@@ -18,7 +18,7 @@ constant_friction_deg = 25.0
 baseline_rad = math.radians(constant_friction_deg)
 
 # Easily change this to 1000 for your second machine!
-target_beads = 500  
+target_beads = 750  
 
 # Relative Velocity Filter (m/s)
 # Anything hitting slower than this is considered static bed creep and ignored
