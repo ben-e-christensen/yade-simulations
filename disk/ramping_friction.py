@@ -7,7 +7,7 @@ RPM = 11.0
 angular_vel = RPM * (math.pi / 30.0)
 
 # The friction sweep parameters
-friction_angles_deg = [0.0 + (i * 2.5) for i in range(13)] # [20.0, 22.5, ..., 50.0]
+friction_angles_deg = [0.0 + (i * 2.5) for i in range(9)] 
 current_idx = 0
 current_deg = friction_angles_deg[current_idx]
 phase_duration_virtual = 30.0 # 30 virtual (simulation) seconds per friction step
