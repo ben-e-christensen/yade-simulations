@@ -1,9 +1,10 @@
 from yade import pack, geom, qt, ymport, export
 import math
 import os
+import time
 
 # --- 0. Global Variables & Setup ---
-RPM = 11.0  
+RPM = 1.0  
 angular_vel = RPM * (math.pi / 30.0)
 
 # The friction sweep parameters
@@ -16,16 +17,23 @@ sim_initialized = False
 phase_start_time = 0.0 
 global_start_time = 0.0
 
-# Create output directory for VTK files
-if not os.path.exists('vtk_output'):
-    os.makedirs('vtk_output')
+# Create run folder: e.g. output/1RPM_ramping_starting@0deg_20261027_143012
+run_name = f"{RPM:g}RPM_ramping_starting@{friction_angles_deg[0]:g}deg_{time.strftime('%Y%m%d_%H%M%S')}"
+OUT = os.path.join('output', run_name)
+VTK_DIR = os.path.join(OUT, 'vtk_output')
+os.makedirs(VTK_DIR, exist_ok=True)
+
+POS_CSV = os.path.join(OUT, 'repose_data.csv')
+FORCE_CSV = os.path.join(OUT, 'force_network.csv')
+
+print(f"\n--- Output folder: {OUT} ---\n")
 
 # Initialize CSV for positions (100Hz)
-with open('repose_data.csv', 'w') as f:
+with open(POS_CSV, 'w') as f:
     f.write("sim_time,fric_deg,bead_id,x_pos,y_pos,z_pos,rot_w,rot_x,rot_y,rot_z,ang_vel_x,ang_vel_y,ang_vel_z\n")
 
 def export_positions():
-    with open('repose_data.csv', 'a') as f:
+    with open(POS_CSV, 'a') as f:
         for b in O.bodies:
             if isinstance(b.shape, Sphere):
                 pos = b.state.pos
@@ -37,9 +45,9 @@ def export_positions():
                         f"{vel[0]},{vel[1]},{vel[2]}\n")
 
 # Initialize CSV and VTK Exporter for interactions (20Hz)
-vtk_interaction_exporter = export.VTKExporter('vtk_output/chains_')
+vtk_interaction_exporter = export.VTKExporter(os.path.join(VTK_DIR, 'chains_'))
 
-with open('force_network.csv', 'w') as f:
+with open(FORCE_CSV, 'w') as f:
     f.write("sim_time,id1,id2,normal_force\n")
 
 def export_force_chains():
@@ -47,7 +55,7 @@ def export_force_chains():
     vtk_interaction_exporter.exportInteractions(what=dict(forceN='i.phys.normalForce.norm()'))
     
     # 2. Export raw force numbers to CSV
-    with open('force_network.csv', 'a') as f:
+    with open(FORCE_CSV, 'a') as f:
         for i in O.interactions:
             if i.isReal:
                 # Ensure we only record bead-to-bead forces, ignoring the drum walls
@@ -193,7 +201,7 @@ O.engines = [
     PyRunner(command='export_positions()', virtPeriod=0.01),
     
     # C++ VTK Engine 1: Records spheres, colors, and velocities at 20Hz (0.05 virtPeriod)
-    VTKRecorder(fileName='vtk_output/drum_', recorders=['spheres', 'colors', 'velocity', 'id'], virtPeriod=0.05),
+    VTKRecorder(fileName=os.path.join(VTK_DIR, 'drum_'), recorders=['spheres', 'colors', 'velocity', 'id'], virtPeriod=0.05),
     
     # Python Exporter 2: Records interaction force chains (VTK + CSV) at 20Hz (0.05 virtPeriod) safely!
     PyRunner(command='export_force_chains()', virtPeriod=0.05)
