@@ -5,3 +5,6 @@ repose_data.csv
 vtk_output/
 stewart_output/
 *.csv
+
+calib_runs/
+sweep/

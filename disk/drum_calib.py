@@ -2,7 +2,8 @@
 drum_calib.py - YADE rotating drum built for matching the real flow (one bead thick, 500 acrylic beads).
 
     yade -n -j1 -x drum_calib.py sweep/base_11rpm.json       # headless, one run (what the sweep uses)
-    yade -j1 drum_calib.py sweep/base_11rpm.json gui         # with the 3D view, to watch it
+    yade -j1 drum_calib.py sweep/base_11rpm.json gui         # with the 3D view, to watch it (no -n, no -x)
+    yade -j1 drum_calib.py test look                         # just build the drum + beads and show them
     yade -n -j1 -x drum_calib.py test                        # ~1 s smoke test with the defaults
 
 Every setting lives in a small json file (see DEFAULTS below; anything left out uses the default).
@@ -51,7 +52,13 @@ DEFAULTS = dict(
     density=1190.0,
     seed=1,
     # --- geometry (same as main.py) ---
+    drum="ring",       # "ring": build the toothed wall here (fast) | "stl": load the STL file
+    teeth=225,         # ring: same profile as the OpenSCAD drum: r = R_base - amp*sin(teeth*angle)
+    tooth_amp=0.315e-3,
+    pts_per_tooth=4,   # wall points per tooth (OpenSCAD used 20; 4 keeps peaks and troughs, 5x fewer triangles)
     stl="serrated_drum.stl",
+    trim_stl=True,     # keep only the drum's INNER wall triangles (the ones beads can touch) - big speed-up
+    trim_margin=3e-3,  # keep triangles whose centre is within R_base + this of the axis
     R_base=81.5e-3,
     drum_h=3.2e-3,
     gap=0.2e-3,
@@ -77,8 +84,9 @@ if args:
         raise SystemExit(f"unknown settings in {args[0]}: {sorted(unknown)}")
     P.update(user)
 TEST = "test" in words
-if "gui" in words:
+if "gui" in words or "look" in words:
     P["gui"] = True
+LOOK = "look" in words
 if TEST:
     P.update(name="test", settle_s=0.3, spinup_s=0.3, steady_revs=0.0, record_revs=0.4 * P["rpm"] / 60)
 if P["fps"] is None:
@@ -118,7 +126,36 @@ et_mm = MatchMaker(matches=((bead_mat, bead_mat, P["en_bb"] * P["et_ratio"]),
 
 # ----------------------------------------------------------------------------- geometry
 R_base, drum_h, gap = P["R_base"], P["drum_h"], P["gap"]
-drum_ids = O.bodies.append(ymport.stl(P["stl"], material=drum_mat, scale=0.001))
+if P["drum"] == "ring":
+    npts = P["teeth"] * P["pts_per_tooth"]
+    z0, z1 = -drum_h / 2, drum_h / 2
+    ring = []
+    for k in range(npts + 1):
+        a = 2 * math.pi * k / npts
+        r = R_base - P["tooth_amp"] * math.sin(P["teeth"] * a)
+        ring.append((r * math.cos(a), r * math.sin(a)))
+    drum_facets = []
+    for (xa, ya), (xb, yb) in zip(ring[:-1], ring[1:]):
+        drum_facets.append(facet([(xa, ya, z0), (xb, yb, z0), (xb, yb, z1)], material=drum_mat))
+        drum_facets.append(facet([(xa, ya, z0), (xb, yb, z1), (xa, ya, z1)], material=drum_mat))
+    print(f"drum ring: {P['teeth']} teeth, {P['tooth_amp']*1e3:.3f} mm amplitude, {len(drum_facets)} triangles")
+else:
+    drum_facets = ymport.stl(P["stl"], material=drum_mat, scale=0.001)
+    n_all = len(drum_facets)
+    if P["trim_stl"]:
+        # beads only ever touch the inner toothed wall: drop outer faces, flat rims (faceplates cover
+        # those) and anything else far from the bead layer. Every triangle costs time every step.
+        def keep(f):
+            c = f.state.pos; nrm = f.shape.normal
+            return (math.hypot(c[0], c[1]) < R_base + P["trim_margin"] and abs(nrm[2]) < 0.9
+                    and abs(c[2] - gap / 2) < drum_h)
+        drum_facets = [f for f in drum_facets if keep(f)]
+    rr = [math.hypot(f.state.pos[0], f.state.pos[1]) for f in drum_facets]
+    print(f"drum STL: {n_all} triangles, kept {len(drum_facets)} "
+          f"(centres {min(rr)*1e3:.1f} - {max(rr)*1e3:.1f} mm from the axis)")
+    if not drum_facets:
+        raise SystemExit("trimming removed every drum triangle - check R_base / trim_margin, or set trim_stl false")
+drum_ids = O.bodies.append(drum_facets)
 face_ids = O.bodies.append(geom.facetBox(center=(0, 0, gap / 2), extents=(R_base * 1.5, R_base * 1.5, (drum_h + gap) / 2),
                                          material=face_mat, wallMask=48))
 rotating_ids = drum_ids + face_ids
@@ -140,7 +177,8 @@ for row in range(-n_grid, n_grid):                 # bottom row first, so the be
             bead_ids.append(O.bodies.append(sphere((x, y, gap / 2), r, material=bead_mat)))
 if len(bead_ids) < P["n_beads"]:
     raise SystemExit(f"only fit {len(bead_ids)} beads")
-bead_ids = np.array(bead_ids)
+bead_ids = [int(i) for i in bead_ids]           # plain ints: O.bodies[] won't take numpy ints
+bead_id_col = np.array(bead_ids)
 print(f"placed {len(bead_ids)} beads, d = {P['d_mean']*1e3:.3f} +- {P['d_tol']*1e3:.3f} mm")
 
 # ----------------------------------------------------------------------------- recording
@@ -166,7 +204,7 @@ def record():
     if DONE[0] or O.time < T_REC - 1e-9:
         return
     xyz, _ = state()
-    block = np.column_stack([np.full(len(bead_ids), O.time), bead_ids, xyz, radii])
+    block = np.column_stack([np.full(len(bead_ids), O.time), bead_id_col, xyz, radii])
     np.savetxt(pos_fh, block, fmt=["%.6f", "%d", "%.7e", "%.7e", "%.7e", "%.5e"], delimiter=",")
 
 
@@ -200,7 +238,7 @@ def monitor():
                  f"{sp.mean():.2f},{sp.max():.1f},{lost},{time.time()-t_wall0:.1f}\n")
     mon_fh.flush()
     print(f"t {O.time:6.2f} s [{phase_name():6s}] bed angle {bed:5.1f} deg, mean speed {sp.mean():6.1f} mm/s, "
-          f"lost {lost}, {time.time()-t_wall0:6.0f} s wall", flush=True)
+          f"lost {lost}, {time.time()-t_wall0:6.0f} s wall, {O.iter/max(time.time()-t_wall0,1e-9):.0f} steps/s", flush=True)
     if lost > 0:
         print("!!! beads escaped the drum - contacts too soft or the time step too big. Stopping.")
         finish()
@@ -238,7 +276,10 @@ print(f"dt = {O.dt:.2e} s -> {T_END / O.dt / 1e6:.2f} M steps")
 
 if P["gui"]:
     from yade import qt
-    qt.View(); qt.center()
-    O.run()
+    qt.Controller(); qt.View(); qt.center()
+    if LOOK:
+        print("look mode: nothing running - press Start in the Controller window to run")
+    else:
+        O.run()
 else:
     O.run(); O.wait()
